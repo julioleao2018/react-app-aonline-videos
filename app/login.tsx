@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
+import { useLanguage } from '@/hooks/useLanguage';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { t } = useLanguage();
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -18,10 +20,10 @@ export default function LoginScreen() {
                 <View style={styles.content}>
                     {/* Logo */}
                     <View style={styles.logoCircle}>
-                        <Text style={styles.logo9}>9</Text>
+                        <Text style={styles.logo9}>A</Text>
                     </View>
 
-                    <Text style={styles.title}>Let you in</Text>
+                    <Text style={styles.title}>{t('letYouIn')}</Text>
 
                     {/* Spacer */}
                     <View style={{ flex: 1 }} />
@@ -30,23 +32,23 @@ export default function LoginScreen() {
                     <View style={styles.actionsContainer}>
                         <TouchableOpacity style={styles.googleButton}>
                             <Text style={styles.googleButtonText}>G</Text>
-                            <Text style={styles.googleButtonLabel}>Continue with Google</Text>
+                            <Text style={styles.googleButtonLabel}>{t('continueGoogle')}</Text>
                         </TouchableOpacity>
 
                         <View style={styles.dividerContainer}>
                             <View style={styles.divider} />
-                            <Text style={styles.dividerText}>or</Text>
+                            <Text style={styles.dividerText}>{t('or')}</Text>
                             <View style={styles.divider} />
                         </View>
 
                         <TouchableOpacity style={styles.passwordButton}>
-                            <Text style={styles.passwordButtonText}>Sign in with password</Text>
+                            <Text style={styles.passwordButtonText}>{t('signInPassword')}</Text>
                         </TouchableOpacity>
 
                         <View style={styles.signupContainer}>
-                            <Text style={styles.signupText}>Don't have an account? </Text>
+                            <Text style={styles.signupText}>{t('noAccount')}</Text>
                             <TouchableOpacity>
-                                <Text style={styles.signupLink}>Sign up</Text>
+                                <Text style={styles.signupLink}>{t('signUp')}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

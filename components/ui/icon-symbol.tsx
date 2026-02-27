@@ -26,6 +26,8 @@ const MAPPING = {
   'play.fill': 'play-arrow',
   'plus': 'add',
   'text.bubble': 'subtitles',
+  'globe': 'language',
+  'info.circle': 'info',
 } as IconMapping;
 
 /**

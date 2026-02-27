@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface Anime {
     id: string;
@@ -14,12 +15,14 @@ interface Props {
 }
 
 export default function AnimeHorizontalList({ title, data }: Props) {
+    const { t } = useLanguage();
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
                 <TouchableOpacity>
-                    <Text style={styles.seeAll}>See all</Text>
+                    <Text style={styles.seeAll}>{t('seeAll')}</Text>
                 </TouchableOpacity>
             </View>
             <FlatList

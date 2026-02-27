@@ -1,7 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useLanguage } from '@/hooks/useLanguage';
 
 export default function MyListScreen() {
+    const { t } = useLanguage();
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="light-content" backgroundColor="#15171E" />
@@ -10,9 +13,9 @@ export default function MyListScreen() {
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>
                         <View style={styles.logoCircle}>
-                            <Text style={styles.logo9}>9</Text>
+                            <Text style={styles.logo9}>A</Text>
                         </View>
-                        <Text style={styles.headerTitle}>My List</Text>
+                        <Text style={styles.headerTitle}>{t('myList')}</Text>
                     </View>
                     <TouchableOpacity style={styles.iconButton}>
                         <IconSymbol name="magnifyingglass" size={24} color="#fff" />
@@ -21,10 +24,10 @@ export default function MyListScreen() {
 
                 {/* Sync Card */}
                 <View style={styles.syncCard}>
-                    <Text style={styles.cardTitle}>My profile</Text>
-                    <Text style={styles.cardDesc}>Sign in to synchronize your anime</Text>
+                    <Text style={styles.cardTitle}>{t('myProfile')}</Text>
+                    <Text style={styles.cardDesc}>{t('signInSync')}</Text>
                     <TouchableOpacity style={styles.continueButton}>
-                        <Text style={styles.continueButtonText}>Continue</Text>
+                        <Text style={styles.continueButtonText}>{t('continue')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>

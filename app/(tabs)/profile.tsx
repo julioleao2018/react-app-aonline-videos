@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
+import { useLanguage } from '@/hooks/useLanguage';
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const { t, toggleLanguage } = useLanguage();
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -12,17 +14,17 @@ export default function ProfileScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.logoCircle}>
-                        <Text style={styles.logo9}>9</Text>
+                        <Text style={styles.logo9}>A</Text>
                     </View>
-                    <Text style={styles.headerTitle}>Profile</Text>
+                    <Text style={styles.headerTitle}>{t('profile')}</Text>
                 </View>
 
                 {/* Sync Card */}
                 <View style={styles.syncCard}>
-                    <Text style={styles.cardTitle}>My profile</Text>
-                    <Text style={styles.cardDesc}>Sign in to synchronize your anime</Text>
+                    <Text style={styles.cardTitle}>{t('myProfile')}</Text>
+                    <Text style={styles.cardDesc}>{t('signInSync')}</Text>
                     <TouchableOpacity style={styles.continueButton} onPress={() => router.push('/login')}>
-                        <Text style={styles.continueButtonText}>Continue</Text>
+                        <Text style={styles.continueButtonText}>{t('continue')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -31,7 +33,7 @@ export default function ProfileScreen() {
                     <TouchableOpacity style={styles.listItem}>
                         <View style={styles.listItemLeft}>
                             <IconSymbol name="text.bubble" size={24} color="#fff" />
-                            <Text style={styles.listItemText}>Subtitle settings</Text>
+                            <Text style={styles.listItemText}>{t('subtitleSettings')}</Text>
                         </View>
                         <IconSymbol name="chevron.right" size={20} color="#666" />
                     </TouchableOpacity>
@@ -39,7 +41,15 @@ export default function ProfileScreen() {
                     <TouchableOpacity style={styles.listItem}>
                         <View style={styles.listItemLeft}>
                             <IconSymbol name="info.circle" size={24} color="#fff" />
-                            <Text style={styles.listItemText}>Help center</Text>
+                            <Text style={styles.listItemText}>{t('helpCenter')}</Text>
+                        </View>
+                        <IconSymbol name="chevron.right" size={20} color="#666" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.listItem} onPress={toggleLanguage}>
+                        <View style={styles.listItemLeft}>
+                            <IconSymbol name="globe" size={24} color="#fff" />
+                            <Text style={styles.listItemText}>{t('language')}</Text>
                         </View>
                         <IconSymbol name="chevron.right" size={20} color="#666" />
                     </TouchableOpacity>

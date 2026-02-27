@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import AnimeHorizontalList from '@/components/AnimeHorizontalList';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useRouter } from 'expo-router';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,9 +38,14 @@ const CAROUSEL_DATA = [
 
 export default function HomeScreen() {
   const { t } = useLanguage();
+  const router = useRouter();
 
   const renderCarouselItem = ({ item }: { item: typeof CAROUSEL_DATA[0] }) => (
-    <View style={{ width: SCREEN_WIDTH, height: 480 }}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={{ width: SCREEN_WIDTH, height: 480 }}
+      onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+    >
       <ImageBackground
         source={{ uri: item.image }}
         style={styles.heroBackground}
@@ -74,7 +80,7 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
       </ImageBackground>
-    </View>
+    </TouchableOpacity>
   );
 
   return (

@@ -34,6 +34,19 @@ const translations: Translations = {
     sentencedToBeAHero: { en: 'Sentenced to Be a Hero', pt: 'Sentenced to Be a Hero' },
     heroSubtitleCategories: { en: 'Action, Adventure, Comedy, Drama, Fantasy', pt: 'Ação, Aventura, Comédia, Drama, Fantasia' },
     language: { en: 'Language (EN)', pt: 'Idioma (PT)' },
+    download: { en: 'Download', pt: 'Baixar' },
+    genreLabel: { en: 'Genre', pt: 'Gênero' },
+    viewMore: { en: 'View More', pt: 'Ver Mais' },
+    episodes: { en: 'Episodes', pt: 'Episódios' },
+    searchEpisode: { en: 'Search episode', pt: 'Buscar episódio' },
+    moreLikeThis: { en: 'More like this', pt: 'Títulos Semelhantes' },
+    comments: { en: 'Comments', pt: 'Comentários' },
+    viewAllComments: { en: 'View All Comments', pt: 'Ver Todos os Comentários' },
+    giveRating: { en: 'Give Rating', pt: 'Avaliar' },
+    users: { en: 'users', pt: 'usuários' },
+    cancel: { en: 'Cancel', pt: 'Cancelar' },
+    submit: { en: 'Submit', pt: 'Enviar' },
+    loadingComments: { en: 'Loading comments...', pt: 'Carregando comentários...' },
 };
 
 interface LanguageContextProps {

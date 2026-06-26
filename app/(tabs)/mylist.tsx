@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useLanguage } from '@/hooks/useLanguage';
+
+const TOP_INSET = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0;
 
 export default function MyListScreen() {
     const { t } = useLanguage();
@@ -8,7 +10,7 @@ export default function MyListScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="light-content" backgroundColor="#15171E" />
-            <View style={styles.container}>
+            <View style={[styles.container, { paddingTop: TOP_INSET }]}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>

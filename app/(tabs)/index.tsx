@@ -1,57 +1,74 @@
-import { Image } from 'expo-image';
-import { StyleSheet, View, Text, ImageBackground, ScrollView, TouchableOpacity, StatusBar, FlatList, Dimensions } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ImageBackground,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  FlatList,
+  Dimensions,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import AnimeHorizontalList from '@/components/AnimeHorizontalList';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useRouter } from 'expo-router';
+import { animeRepository } from '@/src/data/repositories/AnimeRepository';
+import { AnimeCard, HomeRails } from '@/src/domain/models/Anime';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Placeholder data for the design
-const MOCK_DATA = [
-  { id: '1', title: 'One Piece', image: 'https://animesbr.lat/storage/animes/imported/one-piece/cover.jpg', rating: 'PG-13', quality: 'HD' },
-  { id: '2', title: 'Frieren', image: 'https://cdn.myanimelist.net/images/anime/1015/138006l.jpg', rating: 'PG-13', quality: 'HD' },
-  { id: '3', title: 'Fullmetal Alchemist', image: 'https://cdn.myanimelist.net/images/anime/1208/94745l.jpg', rating: 'R', quality: 'HD' },
-];
-
-const CAROUSEL_DATA = [
-  {
-    id: '1',
-    title: 'Sentenced to Be a Hero',
-    subtitle: 'Action, Adventure, Comedy, Drama, Fantasy',
-    image: 'https://animesbr.lat/storage/animes/imported/yuusha-kei-ni-shosu-choubatsu-yuusha-9004-tai-keimu-kiroku/cover.jpg'
-  },
-  {
-    id: '2',
-    title: 'One Piece',
-    subtitle: 'Action, Adventure, Fantasy',
-    image: 'https://animesbr.lat/storage/animes/imported/one-piece/cover.jpg'
-  },
-  {
-    id: '3',
-    title: 'Frieren',
-    subtitle: 'Adventure, Drama, Fantasy',
-    image: 'https://cdn.myanimelist.net/images/anime/1015/138006l.jpg'
-  }
-];
 
 export default function HomeScreen() {
   const { t } = useLanguage();
   const router = useRouter();
 
-  const renderCarouselItem = ({ item }: { item: typeof CAROUSEL_DATA[0] }) => (
+  const [rails, setRails] = useState<HomeRails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setError(false);
+      const data = await animeRepository.getHome();
+      setRails(data);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load();
+  }, [load]);
+
+  const openAnime = (slug: string) =>
+    router.push({ pathname: '/anime/[id]', params: { id: slug } });
+
+  const banners = rails?.banners ?? [];
+
+  const renderCarouselItem = ({ item }: { item: AnimeCard }) => (
     <TouchableOpacity
       activeOpacity={0.9}
       style={{ width: SCREEN_WIDTH, height: 480 }}
-      onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+      onPress={() => openAnime(item.slug)}
     >
       <ImageBackground
-        source={{ uri: item.image }}
+        source={{ uri: item.banner_url || item.cover_url || undefined }}
         style={styles.heroBackground}
         imageStyle={{ opacity: 0.8 }}
       >
-        {/* Dark Overlay for better contrast */}
         <View style={StyleSheet.absoluteFillObject}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} />
         </View>
@@ -60,15 +77,13 @@ export default function HomeScreen() {
           colors={['transparent', 'rgba(21, 23, 30, 0.8)', '#15171E']}
           style={styles.heroGradient}
         >
-          <Text style={styles.heroTitle}>
-            {item.title === 'Sentenced to Be a Hero' ? t('sentencedToBeAHero') : item.title}
-          </Text>
-          <Text style={styles.heroSubtitle}>
-            {item.subtitle === 'Action, Adventure, Comedy, Drama, Fantasy' ? t('heroSubtitleCategories') : item.subtitle}
+          <Text style={styles.heroTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.heroSubtitle} numberOfLines={1}>
+            {item.genres?.join(', ')}
           </Text>
 
           <View style={styles.heroButtons}>
-            <TouchableOpacity style={styles.playButton}>
+            <TouchableOpacity style={styles.playButton} onPress={() => openAnime(item.slug)}>
               <IconSymbol name="play.fill" size={20} color="#fff" />
               <Text style={styles.playButtonText}>{t('play')}</Text>
             </TouchableOpacity>
@@ -83,26 +98,42 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ActivityIndicator size="large" color="#8E6BEB" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8E6BEB" />
+        }
+      >
         {/* Hero Section Carousel */}
-        <View style={{ backgroundColor: '#2C2D35', height: 480 }}>
-          <FlatList
-            data={CAROUSEL_DATA}
-            renderItem={renderCarouselItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            bounces={false}
-          />
-        </View>
+        {banners.length > 0 && (
+          <View style={{ backgroundColor: '#2C2D35', height: 480 }}>
+            <FlatList
+              data={banners}
+              renderItem={renderCarouselItem}
+              keyExtractor={(item) => String(item.id)}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              bounces={false}
+            />
+          </View>
+        )}
 
-        {/* Top Bar Overlay positioned absolutely inside ScrollView so it scrolls up with the page */}
+        {/* Top Bar Overlay */}
         <View style={styles.topBar}>
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
@@ -120,14 +151,19 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {error && (
+          <TouchableOpacity style={styles.errorBox} onPress={load}>
+            <Text style={styles.errorText}>{t('loadError')}</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Content Sections */}
         <View style={styles.listsContainer}>
-          <AnimeHorizontalList title={t('topAiring')} data={MOCK_DATA} />
-          <AnimeHorizontalList title={t('newEpisodes')} data={MOCK_DATA} />
-          <AnimeHorizontalList title={t('mostFavorite')} data={MOCK_DATA} />
-          <AnimeHorizontalList title={t('topTvSeries')} data={MOCK_DATA} />
+          <AnimeHorizontalList title={t('topAiring')} data={rails?.top_airing ?? []} />
+          <AnimeHorizontalList title={t('newEpisodes')} data={rails?.new_episodes ?? []} markNew />
+          <AnimeHorizontalList title={t('mostFavorite')} data={rails?.most_favorite ?? []} />
+          <AnimeHorizontalList title={t('topTvSeries')} data={rails?.top_series ?? []} />
         </View>
-
       </ScrollView>
     </View>
   );
@@ -137,6 +173,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#15171E',
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     paddingBottom: 20,
@@ -156,7 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50, // Safe area approx
+    paddingTop: 50,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -246,5 +286,16 @@ const styles = StyleSheet.create({
   },
   listsContainer: {
     marginTop: -10,
+  },
+  errorBox: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#2C2D35',
+    borderRadius: 12,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    textAlign: 'center',
   },
 });

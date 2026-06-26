@@ -2,26 +2,22 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react
 import { useLanguage } from '@/hooks/useLanguage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-
-export interface Anime {
-    id: string;
-    title: string;
-    image: string;
-    season?: string;
-    isNew?: boolean;
-    isSubbed?: boolean;
-    isDubbed?: boolean;
-    quality?: string;
-}
+import { AnimeCard } from '@/src/domain/models/Anime';
 
 interface Props {
     title: string;
-    data: Anime[];
+    data: AnimeCard[];
+    /** Marca os cards com o selo "NOVO" (ex.: rail de novos episódios). */
+    markNew?: boolean;
 }
 
-export default function AnimeHorizontalList({ title, data }: Props) {
+export default function AnimeHorizontalList({ title, data, markNew }: Props) {
     const { t } = useLanguage();
     const router = useRouter();
+
+    if (!data || data.length === 0) {
+        return null;
+    }
 
     return (
         <View style={styles.container}>
@@ -34,16 +30,20 @@ export default function AnimeHorizontalList({ title, data }: Props) {
             <FlatList
                 horizontal
                 data={data}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => String(item.id)}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.listContainer}
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         style={styles.card}
-                        onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.id } })}
+                        onPress={() => router.push({ pathname: '/anime/[id]', params: { id: item.slug } })}
                     >
                         <View style={styles.imageContainer}>
-                            <Image source={{ uri: item.image }} style={styles.image} />
+                            {item.cover_url ? (
+                                <Image source={{ uri: item.cover_url }} style={styles.image} />
+                            ) : (
+                                <View style={[styles.image, styles.imagePlaceholder]} />
+                            )}
 
                             {/* Inner shadow/gradient at the bottom of the image for depth */}
                             <LinearGradient
@@ -53,25 +53,22 @@ export default function AnimeHorizontalList({ title, data }: Props) {
 
                             {/* Top-left Badge: Quality (e.g. HD) */}
                             <View style={[styles.badge, styles.badgeTopLeft]}>
-                                <Text style={styles.badgeTextLight}>{item.quality || 'HD'}</Text>
+                                <Text style={styles.badgeTextLight}>HD</Text>
                             </View>
 
                             {/* Top-right Badge: New */}
-                            {(item.isNew !== false) && (
+                            {markNew && (
                                 <View style={[styles.badge, styles.badgeTopRight]}>
                                     <Text style={styles.badgeTextLight}>NOVO</Text>
                                 </View>
                             )}
-
-                            {/* Bottom-right Badge: Language/Type (e.g. LEG) */}
-                            <View style={[styles.badge, styles.badgeBottomRight]}>
-                                <Text style={styles.badgeTextLight}>{item.isDubbed ? 'DUB' : 'LEG'}</Text>
-                            </View>
                         </View>
 
                         <View style={styles.infoContainer}>
                             <Text style={styles.animeTitle} numberOfLines={1}>{item.title}</Text>
-                            <Text style={styles.animeSubtitle} numberOfLines={1}>{item.season || '1ª Temporada'}</Text>
+                            <Text style={styles.animeSubtitle} numberOfLines={1}>
+                                {item.genres?.[0] || (item.year ? String(item.year) : '')}
+                            </Text>
                         </View>
                     </TouchableOpacity>
                 )}
@@ -122,6 +119,9 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
+    },
+    imagePlaceholder: {
+        backgroundColor: '#2F3142',
     },
     imageGradient: {
         position: 'absolute',

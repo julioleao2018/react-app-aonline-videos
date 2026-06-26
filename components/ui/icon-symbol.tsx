@@ -16,18 +16,40 @@ type IconSymbolName = keyof typeof MAPPING;
 const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
+  'paperplane': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
   'calendar': 'calendar-today',
   'bookmark.fill': 'bookmark',
+  'bookmark': 'bookmark-border',
   'person.fill': 'person',
   'magnifyingglass': 'search',
   'bell.fill': 'notifications',
   'play.fill': 'play-arrow',
+  'pause.fill': 'pause',
   'plus': 'add',
   'text.bubble': 'subtitles',
   'globe': 'language',
   'info.circle': 'info',
+  // Navegação
+  'arrow.left': 'arrow-back',
+  'arrow.right': 'arrow-forward',
+  // Detalhe / avaliação
+  'star.fill': 'star',
+  'star': 'star-border',
+  'heart': 'favorite-border',
+  'heart.fill': 'favorite',
+  'arrow.down.circle': 'file-download',
+  'tv.badge.wifi': 'cast',
+  // Controles do player
+  'gobackward.10': 'replay-10',
+  'goforward.10': 'forward-10',
+  'speedometer': 'speed',
+  'gear': 'settings',
+  'lock.open': 'lock-open',
+  'speaker.wave.2.fill': 'volume-up',
+  'arrow.up.left.and.arrow.down.right': 'fullscreen',
 } as IconMapping;
 
 /**

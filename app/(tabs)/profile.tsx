@@ -1,16 +1,18 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
+
+const TOP_INSET = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0;
 
 export default function ProfileScreen() {
-    const router = useRouter();
     const { t, toggleLanguage } = useLanguage();
+    const { user, logout } = useAuth();
 
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="light-content" backgroundColor="#15171E" />
-            <View style={styles.container}>
+            <View style={[styles.container, { paddingTop: TOP_INSET }]}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.logoCircle}>
@@ -19,12 +21,12 @@ export default function ProfileScreen() {
                     <Text style={styles.headerTitle}>{t('profile')}</Text>
                 </View>
 
-                {/* Sync Card */}
+                {/* User Card */}
                 <View style={styles.syncCard}>
-                    <Text style={styles.cardTitle}>{t('myProfile')}</Text>
-                    <Text style={styles.cardDesc}>{t('signInSync')}</Text>
-                    <TouchableOpacity style={styles.continueButton} onPress={() => router.push('/login')}>
-                        <Text style={styles.continueButtonText}>{t('continue')}</Text>
+                    <Text style={styles.cardTitle}>{user?.name ?? t('myProfile')}</Text>
+                    <Text style={styles.cardDesc}>{user?.email ?? ''}</Text>
+                    <TouchableOpacity style={styles.continueButton} onPress={logout}>
+                        <Text style={styles.continueButtonText}>{t('logout')}</Text>
                     </TouchableOpacity>
                 </View>
 

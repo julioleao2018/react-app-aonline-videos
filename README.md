@@ -25,6 +25,26 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Backend / API
+
+O app consome a API somente-leitura do backend Laravel (`/api/v1`), com auth por
+token Sanctum (Bearer). **Toda navegação exige login** (mesmo usuário do site) —
+não há catálogo anônimo.
+
+A URL base da API vem de `expo.extra.apiBaseUrl` em [app.json](app.json):
+
+- **Produção (padrão):** `https://animesbr.lat/api/v1` — só funciona depois que o
+  backend com a API estiver deployado na VPS.
+- **Dev contra o backend local em Docker** (porta 8000): ajuste `apiBaseUrl`:
+  - Emulador Android: `http://10.0.2.2:8000/api/v1`
+  - iOS simulator: `http://localhost:8000/api/v1`
+  - Device físico (Expo Go): `http://<IP-da-sua-máquina-na-LAN>:8000/api/v1`
+
+Arquitetura (Clean-ish): `src/config` (env) · `src/data/api` (axios + Bearer) ·
+`src/data/auth` (token no SecureStore, login) · `src/data/repositories` (chamadas
+à API) · `src/domain/models` (tipos). Sessão e gate de login em
+[hooks/useAuth.tsx](hooks/useAuth.tsx).
+
 ## Get a fresh project
 
 When you're ready, run:

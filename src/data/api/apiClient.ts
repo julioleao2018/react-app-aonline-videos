@@ -1,37 +1,38 @@
 import axios from 'axios';
-
-// Replace with the actual Laravel API URL
-const BASE_URL = 'http://localhost:8000/api';
+import { API_BASE_URL } from '../../config/env';
+import { getCachedToken } from '../auth/tokenStorage';
 
 export const apiClient = axios.create({
-    baseURL: BASE_URL,
+    baseURL: API_BASE_URL,
     headers: {
+        Accept: 'application/json',
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
     },
-    timeout: 10000,
+    timeout: 15000,
 });
 
-// Request Interceptor for Auth Tokens
-apiClient.interceptors.request.use(
-    async (config) => {
-        // TODO: Fetch token from SecureStore and append to headers
-        // const token = await SecureStore.getItemAsync('userToken');
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`;
-        // }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+// Handler chamado quando a API responde 401 (token inválido/expirado).
+// O AuthProvider registra um callback aqui para limpar a sessão e mandar pro login.
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+    onUnauthorized = handler;
+}
 
-// Response Interceptor for Error Handling
+// Injeta o token Bearer (lido de forma síncrona do cache do tokenStorage).
+apiClient.interceptors.request.use((config) => {
+    const token = getCachedToken();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Handle global errors like 401 Unauthorized here
+        if (error?.response?.status === 401) {
+            onUnauthorized?.();
+        }
         return Promise.reject(error);
     }
 );

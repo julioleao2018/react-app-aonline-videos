@@ -40,6 +40,11 @@ function Avatar({ name, url, size = 40 }: { name: string; url: string | null; si
     );
 }
 
+interface ReplyTarget {
+    target: CommentItem;
+    rootId: number;
+}
+
 export default function CommentsScreen() {
     const router = useRouter();
     const { t } = useLanguage();
@@ -52,19 +57,12 @@ export default function CommentsScreen() {
 
     const [text, setText] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [replyTo, setReplyTo] = useState<CommentItem | null>(null);
+    const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
 
-    const [repliesByParent, setRepliesByParent] = useState<Record<number, CommentItem[]>>({});
+    const [repliesByRoot, setRepliesByRoot] = useState<Record<number, CommentItem[]>>({});
     const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
     const inputRef = useRef<TextInput>(null);
-
-    // Inicia uma resposta: marca o alvo e foca o input (abre o teclado), senão
-    // parece que "nada acontece" ao tocar em Responder.
-    const startReply = useCallback((comment: CommentItem) => {
-        setReplyTo(comment);
-        requestAnimationFrame(() => inputRef.current?.focus());
-    }, []);
 
     const load = useCallback(async () => {
         if (!id) return;
@@ -85,13 +83,13 @@ export default function CommentsScreen() {
         load();
     }, [load]);
 
-    // Atualiza um comentário (de topo ou resposta) por id, em qualquer lista.
+    // Atualiza um comentário (raiz ou resposta) por id em qualquer lista.
     const patchComment = useCallback((commentId: number, patch: Partial<CommentItem>) => {
         setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, ...patch } : c)));
-        setRepliesByParent((prev) => {
+        setRepliesByRoot((prev) => {
             const next: Record<number, CommentItem[]> = {};
-            for (const [pid, list] of Object.entries(prev)) {
-                next[Number(pid)] = list.map((c) => (c.id === commentId ? { ...c, ...patch } : c));
+            for (const [rid, list] of Object.entries(prev)) {
+                next[Number(rid)] = list.map((c) => (c.id === commentId ? { ...c, ...patch } : c));
             }
             return next;
         });
@@ -99,7 +97,6 @@ export default function CommentsScreen() {
 
     const toggleLike = useCallback(
         async (comment: CommentItem) => {
-            // Otimista
             const optimistic = {
                 liked_by_me: !comment.liked_by_me,
                 likes_count: comment.likes_count + (comment.liked_by_me ? -1 : 1),
@@ -109,28 +106,37 @@ export default function CommentsScreen() {
                 const state = await animeRepository.toggleCommentLike(comment.id);
                 patchComment(comment.id, { liked_by_me: state.liked, likes_count: state.likes_count });
             } catch {
-                // Reverte
                 patchComment(comment.id, { liked_by_me: comment.liked_by_me, likes_count: comment.likes_count });
             }
         },
         [patchComment]
     );
 
+    const loadReplies = useCallback(async (rootId: number) => {
+        try {
+            const replies = await animeRepository.getReplies(rootId);
+            setRepliesByRoot((prev) => ({ ...prev, [rootId]: replies }));
+            patchComment(rootId, { replies_count: replies.length });
+        } catch {
+            setRepliesByRoot((prev) => ({ ...prev, [rootId]: [] }));
+        }
+    }, [patchComment]);
+
     const toggleReplies = useCallback(
-        async (comment: CommentItem) => {
-            const isOpen = expanded[comment.id];
-            setExpanded((prev) => ({ ...prev, [comment.id]: !isOpen }));
-            if (!isOpen && !repliesByParent[comment.id]) {
-                try {
-                    const replies = await animeRepository.getReplies(comment.id);
-                    setRepliesByParent((prev) => ({ ...prev, [comment.id]: replies }));
-                } catch {
-                    setRepliesByParent((prev) => ({ ...prev, [comment.id]: [] }));
-                }
+        (rootId: number) => {
+            const isOpen = expanded[rootId];
+            setExpanded((prev) => ({ ...prev, [rootId]: !isOpen }));
+            if (!isOpen && !repliesByRoot[rootId]) {
+                loadReplies(rootId);
             }
         },
-        [expanded, repliesByParent]
+        [expanded, repliesByRoot, loadReplies]
     );
+
+    const startReply = useCallback((target: CommentItem, rootId: number) => {
+        setReplyTo({ target, rootId });
+        requestAnimationFrame(() => inputRef.current?.focus());
+    }, []);
 
     const submit = useCallback(async () => {
         const body = text.trim();
@@ -138,14 +144,11 @@ export default function CommentsScreen() {
         setSubmitting(true);
         try {
             if (replyTo) {
-                const reply = await animeRepository.replyToComment(replyTo.id, body);
-                // Anexa à lista de respostas (se carregada) e incrementa o contador.
-                setRepliesByParent((prev) => ({
-                    ...prev,
-                    [replyTo.id]: [...(prev[replyTo.id] ?? []), reply],
-                }));
-                setExpanded((prev) => ({ ...prev, [replyTo.id]: true }));
-                patchComment(replyTo.id, { replies_count: replyTo.replies_count + 1 });
+                await animeRepository.replyToComment(replyTo.target.id, body);
+                // Recarrega o thread achatado da raiz (cobre resposta-de-resposta).
+                await loadReplies(replyTo.rootId);
+                setExpanded((prev) => ({ ...prev, [replyTo.rootId]: true }));
+                setTotal((prev) => prev + 1);
                 setReplyTo(null);
             } else {
                 const comment = await animeRepository.postComment(id, body);
@@ -154,68 +157,73 @@ export default function CommentsScreen() {
             }
             setText('');
         } catch (err: any) {
-            // Mantém o texto e mostra o motivo (ex.: limite/spam vindos do backend).
             const msg = err?.response?.data?.message || err?.response?.data?.errors?.body?.[0];
             Alert.alert('Erro', msg || t('connectionError'));
         } finally {
             setSubmitting(false);
         }
-    }, [text, submitting, replyTo, id, patchComment, t]);
+    }, [text, submitting, replyTo, id, loadReplies, t]);
 
-    const renderComment = (item: CommentItem, isReply = false) => (
+    const renderComment = (item: CommentItem, rootId: number, isReply = false) => (
         <View style={[styles.commentItem, isReply && styles.replyItem]}>
-            <Avatar name={item.author.name} url={item.author.avatar_url} size={isReply ? 32 : 40} />
-            <View style={styles.commentBody}>
-                <View style={styles.usernameRow}>
-                    <Text style={styles.username}>{item.author.name}</Text>
-                    {item.author.is_admin && (
-                        <View style={styles.adminBadge}>
-                            <Text style={styles.adminBadgeText}>ADMIN</Text>
-                        </View>
-                    )}
-                </View>
-                <Text style={styles.commentText}>{item.body}</Text>
-                <View style={styles.commentFooter}>
-                    <TouchableOpacity style={styles.likeButton} onPress={() => toggleLike(item)}>
-                        <IconSymbol
-                            name={item.liked_by_me ? 'heart.fill' : 'heart'}
-                            size={16}
-                            color={item.liked_by_me ? '#8E6BEB' : '#aaa'}
-                        />
-                        <Text style={[styles.likesCount, item.liked_by_me && { color: '#8E6BEB' }]}>{item.likes_count}</Text>
-                    </TouchableOpacity>
-                    {!isReply && (
-                        <TouchableOpacity onPress={() => startReply(item)}>
-                            <Text style={styles.replyBtn}>{t('reply')}</Text>
-                        </TouchableOpacity>
-                    )}
-                    <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
-                </View>
-
-                {!isReply && item.replies_count > 0 && (
-                    <TouchableOpacity onPress={() => toggleReplies(item)} style={styles.repliesToggle}>
-                        <Text style={styles.repliesToggleText}>
-                            {expanded[item.id] ? t('hideReplies') : `${t('viewReplies')} (${item.replies_count})`}
-                        </Text>
-                    </TouchableOpacity>
-                )}
-
-                {!isReply && expanded[item.id] && (
-                    <View style={styles.repliesContainer}>
-                        {(repliesByParent[item.id] ?? []).map((r) => (
-                            <View key={r.id}>{renderComment(r, true)}</View>
-                        ))}
+            {/* Linha de cabeçalho: avatar + nome lado a lado */}
+            <View style={styles.headerRow}>
+                <Avatar name={item.author.name} url={item.author.avatar_url} size={isReply ? 32 : 40} />
+                <Text style={styles.username}>{item.author.name}</Text>
+                {item.author.is_admin && (
+                    <View style={styles.adminBadge}>
+                        <Text style={styles.adminBadgeText}>ADMIN</Text>
                     </View>
                 )}
             </View>
+
+            {/* Marca a quem está respondendo */}
+            {item.reply_to_name && (
+                <Text style={styles.replyingToMark}>
+                    {t('replyingTo')} <Text style={styles.replyingToName}>@{item.reply_to_name}</Text>
+                </Text>
+            )}
+
+            {/* Texto full-width */}
+            <Text style={styles.commentText}>{item.body}</Text>
+
+            {/* Footer: curtir + responder + data */}
+            <View style={styles.commentFooter}>
+                <TouchableOpacity style={styles.likeButton} onPress={() => toggleLike(item)}>
+                    <IconSymbol
+                        name={item.liked_by_me ? 'heart.fill' : 'heart'}
+                        size={18}
+                        color={item.liked_by_me ? '#8E6BEB' : '#aaa'}
+                    />
+                    <Text style={[styles.likesCount, item.liked_by_me && { color: '#8E6BEB' }]}>{item.likes_count}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => startReply(item, rootId)}>
+                    <Text style={styles.replyBtn}>{t('reply')}</Text>
+                </TouchableOpacity>
+                <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
+            </View>
+
+            {/* Toggle + lista achatada de respostas (só na raiz) */}
+            {!isReply && item.replies_count > 0 && (
+                <TouchableOpacity onPress={() => toggleReplies(item.id)} style={styles.repliesToggle}>
+                    <Text style={styles.repliesToggleText}>
+                        {expanded[item.id] ? t('hideReplies') : `${t('viewReplies')} (${item.replies_count})`}
+                    </Text>
+                </TouchableOpacity>
+            )}
+
+            {!isReply && expanded[item.id] && (
+                <View style={styles.repliesContainer}>
+                    {(repliesByRoot[item.id] ?? []).map((r) => (
+                        <View key={r.id}>{renderComment(r, item.id, true)}</View>
+                    ))}
+                </View>
+            )}
         </View>
     );
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <Stack.Screen options={{ headerShown: false }} />
 
             <View style={[styles.header, { paddingTop: TOP_INSET + 8 }]}>
@@ -241,9 +249,10 @@ export default function CommentsScreen() {
                     keyExtractor={(item) => String(item.id)}
                     contentContainerStyle={styles.listContent}
                     keyboardShouldPersistTaps="handled"
-                    extraData={{ expanded, repliesByParent }}
+                    extraData={{ expanded, repliesByRoot }}
                     ListEmptyComponent={<Text style={styles.emptyText}>{t('noComments')}</Text>}
-                    renderItem={({ item }) => renderComment(item)}
+                    renderItem={({ item }) => renderComment(item, item.id)}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
                 />
             )}
 
@@ -252,7 +261,7 @@ export default function CommentsScreen() {
                 {replyTo && (
                     <View style={styles.replyingBanner}>
                         <Text style={styles.replyingText} numberOfLines={1}>
-                            {t('replyingTo')} {replyTo.author.name}
+                            {t('replyingTo')} {replyTo.target.author.name}
                         </Text>
                         <TouchableOpacity onPress={() => setReplyTo(null)}>
                             <Text style={styles.replyingCancel}>{t('cancel')}</Text>
@@ -298,25 +307,27 @@ const styles = StyleSheet.create({
     errorText: { color: '#ff6b6b' },
     emptyText: { color: '#666', textAlign: 'center', marginTop: 40 },
     listContent: { paddingHorizontal: 20, paddingBottom: 20 },
-    commentItem: { flexDirection: 'row', marginBottom: 24 },
-    replyItem: { marginBottom: 16, marginTop: 16 },
-    avatar: { marginRight: 12, backgroundColor: '#333' },
+    separator: { height: 1, backgroundColor: '#23242E', marginVertical: 20 },
+    commentItem: {},
+    replyItem: { marginTop: 18 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+    avatar: { backgroundColor: '#333' },
     avatarFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#8E6BEB' },
     avatarLetter: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    commentBody: { flex: 1 },
-    usernameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-    username: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    username: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
     adminBadge: { backgroundColor: '#8E6BEB', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     adminBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
+    replyingToMark: { color: '#888', fontSize: 12, marginBottom: 6 },
+    replyingToName: { color: '#8E6BEB', fontWeight: '600' },
     commentText: { color: '#E0E0E0', fontSize: 14, lineHeight: 20, marginBottom: 12 },
-    commentFooter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    commentFooter: { flexDirection: 'row', alignItems: 'center', gap: 20 },
     likeButton: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    likesCount: { color: '#ccc', fontSize: 12 },
-    replyBtn: { color: '#8E6BEB', fontSize: 12, fontWeight: 'bold' },
-    dateText: { color: '#888', fontSize: 12 },
-    repliesToggle: { marginTop: 12 },
+    likesCount: { color: '#ccc', fontSize: 13 },
+    replyBtn: { color: '#8E6BEB', fontSize: 13, fontWeight: 'bold' },
+    dateText: { color: '#888', fontSize: 12, marginLeft: 'auto' },
+    repliesToggle: { marginTop: 14 },
     repliesToggleText: { color: '#8E6BEB', fontSize: 13, fontWeight: '600' },
-    repliesContainer: { marginTop: 4, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: '#2C2D35' },
+    repliesContainer: { marginTop: 6, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: '#2C2D35' },
     inputContainer: {
         padding: 16,
         paddingBottom: 28,
@@ -346,13 +357,6 @@ const styles = StyleSheet.create({
         maxHeight: 120,
     },
     input: { color: '#fff', fontSize: 14 },
-    sendButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#8E6BEB',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#8E6BEB', justifyContent: 'center', alignItems: 'center' },
     sendButtonDisabled: { opacity: 0.5 },
 });

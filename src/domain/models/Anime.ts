@@ -91,6 +91,7 @@ export interface CommentItem {
     likes_count: number;
     liked_by_me: boolean;
     replies_count: number;
+    reply_to_name: string | null;
     created_at: string | null;
 }
 

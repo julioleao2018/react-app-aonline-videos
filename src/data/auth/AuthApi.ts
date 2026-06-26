@@ -25,6 +25,22 @@ export const AuthApi = {
         return response.data;
     },
 
+    async register(
+        name: string,
+        email: string,
+        password: string,
+        passwordConfirmation: string
+    ): Promise<LoginResponse> {
+        const response = await apiClient.post<LoginResponse>('/auth/register', {
+            name,
+            email,
+            password,
+            password_confirmation: passwordConfirmation,
+            device_name: `${Platform.OS}-app`,
+        });
+        return response.data;
+    },
+
     async me(): Promise<AuthUser> {
         const response = await apiClient.get<{ data: AuthUser }>('/auth/me');
         return response.data.data;

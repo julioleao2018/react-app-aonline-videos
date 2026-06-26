@@ -65,6 +65,14 @@ const translations: Translations = {
     addComment: { en: 'Add comment...', pt: 'Adicionar comentário...' },
     writeReply: { en: 'Write a reply...', pt: 'Escreva uma resposta...' },
     noComments: { en: 'No comments yet. Be the first!', pt: 'Sem comentários ainda. Seja o primeiro!' },
+    name: { en: 'Name', pt: 'Nome' },
+    confirmPassword: { en: 'Confirm password', pt: 'Confirmar senha' },
+    createAccount: { en: 'Create account', pt: 'Criar conta' },
+    haveAccount: { en: 'Already have an account?', pt: 'Já tem uma conta?' },
+    continueDiscord: { en: 'Continue with Discord', pt: 'Continuar com Discord' },
+    registerError: { en: 'Could not create account. Check the fields.', pt: 'Não foi possível criar a conta. Verifique os campos.' },
+    passwordsDontMatch: { en: 'Passwords do not match.', pt: 'As senhas não coincidem.' },
+    socialError: { en: 'Social sign-in failed.', pt: 'Falha no login social.' },
 };
 
 interface LanguageContextProps {

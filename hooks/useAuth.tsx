@@ -1,7 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { AuthApi, AuthUser } from '@/src/data/auth/AuthApi';
 import { setUnauthorizedHandler } from '@/src/data/api/apiClient';
 import { clearToken, loadToken, saveToken } from '@/src/data/auth/tokenStorage';
+import { API_BASE_URL } from '@/src/config/env';
+
+export type SocialProvider = 'google' | 'discord';
 
 interface AuthContextProps {
     user: AuthUser | null;
@@ -9,6 +14,8 @@ interface AuthContextProps {
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
+    register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>;
+    loginWithProvider: (provider: SocialProvider) => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -59,6 +66,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(loggedUser);
     }, []);
 
+    const register = useCallback(
+        async (name: string, email: string, password: string, passwordConfirmation: string) => {
+            const { token, user: newUser } = await AuthApi.register(name, email, password, passwordConfirmation);
+            await saveToken(token);
+            setUser(newUser);
+        },
+        []
+    );
+
+    // OAuth Google/Discord: abre o fluxo no WebBrowser e captura o token que o
+    // backend devolve no deep link de retorno.
+    const loginWithProvider = useCallback(async (provider: SocialProvider) => {
+        const returnUrl = Linking.createURL('auth-callback');
+        const authUrl = `${API_BASE_URL}/auth/${provider}/redirect?return=${encodeURIComponent(returnUrl)}`;
+
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+        if (result.type !== 'success' || !result.url) {
+            throw new Error('cancelled');
+        }
+
+        const { queryParams } = Linking.parse(result.url);
+        const token = queryParams?.token;
+        const error = queryParams?.error;
+
+        if (!token || typeof token !== 'string') {
+            throw new Error(typeof error === 'string' ? error : 'social_failed');
+        }
+
+        await saveToken(token);
+        const me = await AuthApi.me();
+        setUser(me);
+    }, []);
+
     const logout = useCallback(async () => {
         try {
             await AuthApi.logout();
@@ -70,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return (
         <AuthContext.Provider
-            value={{ user, isLoading, isAuthenticated: !!user, login, logout }}
+            value={{ user, isLoading, isAuthenticated: !!user, login, register, loginWithProvider, logout }}
         >
             {children}
         </AuthContext.Provider>

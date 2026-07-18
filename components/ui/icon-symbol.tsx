@@ -50,6 +50,12 @@ const MAPPING = {
   'lock.open': 'lock-open',
   'speaker.wave.2.fill': 'volume-up',
   'arrow.up.left.and.arrow.down.right': 'fullscreen',
+  'bubble.left': 'chat-bubble-outline',
+  'ellipsis': 'more-vert',
+  'line.3.horizontal.decrease': 'sort',
+  'slider.horizontal.3': 'tune',
+  'checkmark': 'check',
+  'xmark': 'close',
 } as IconMapping;
 
 /**

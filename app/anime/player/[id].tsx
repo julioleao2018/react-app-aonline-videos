@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import Slider from '@react-native-community/slider';
 import { animeRepository } from '@/src/data/repositories/AnimeRepository';
 import { PlaySource } from '@/src/domain/models/Anime';
+import { MEDIA_REFERER } from '@/src/config/env';
 
 export default function VideoPlayerScreen() {
     const { id, title = 'Player' } = useLocalSearchParams<{ id: string; title?: string }>();
@@ -57,9 +58,14 @@ export default function VideoPlayerScreen() {
     }, [id]);
 
     // Troca a fonte do player quando muda a source selecionada.
+    // O CDN exige Referer same-origin do site; sem ele responde 403 (o header
+    // é aplicado também aos segmentos HLS pelo player nativo).
     useEffect(() => {
         if (!currentSource) return;
-        player.replace({ uri: currentSource.url });
+        player.replace({
+            uri: currentSource.url,
+            headers: { Referer: MEDIA_REFERER },
+        });
         player.play();
     }, [currentSource, player]);
 

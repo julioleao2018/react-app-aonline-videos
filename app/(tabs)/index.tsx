@@ -19,6 +19,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useRouter } from 'expo-router';
 import { animeRepository } from '@/src/data/repositories/AnimeRepository';
 import { AnimeCard, HomeRails } from '@/src/domain/models/Anime';
+import { useLibrary } from '@/hooks/useLibrary';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -30,6 +31,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  // Estado global compartilhado (hero "+ Minha Lista" fica em sincronia com o app).
+  const library = useLibrary();
 
   const load = useCallback(async () => {
     try {
@@ -88,8 +91,8 @@ export default function HomeScreen() {
               <Text style={styles.playButtonText}>{t('play')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.myListButton}>
-              <IconSymbol name="plus" size={20} color="#fff" />
+            <TouchableOpacity style={styles.myListButton} onPress={() => library.toggleSaved(item.slug)}>
+              <IconSymbol name={library.isSaved(item.slug) ? 'checkmark' : 'plus'} size={20} color="#fff" />
               <Text style={styles.myListButtonText}>{t('myList')}</Text>
             </TouchableOpacity>
           </View>
@@ -125,6 +128,7 @@ export default function HomeScreen() {
               data={banners}
               renderItem={renderCarouselItem}
               keyExtractor={(item) => String(item.id)}
+              extraData={library.version}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}

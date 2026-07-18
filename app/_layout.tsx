@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LanguageProvider } from '@/hooks/useLanguage';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { LibraryProvider } from '@/hooks/useLibrary';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -61,8 +62,10 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <LanguageProvider>
         <AuthProvider>
-          <RootNavigator />
-          <StatusBar style="auto" />
+          <LibraryProvider>
+            <RootNavigator />
+            <StatusBar style="auto" />
+          </LibraryProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

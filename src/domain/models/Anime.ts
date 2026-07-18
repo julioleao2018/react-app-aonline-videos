@@ -20,6 +20,29 @@ export interface AnimeCard {
 /** Alias de compatibilidade — código antigo importava `Anime`. */
 export type Anime = AnimeCard;
 
+/** Episódio a "continuar" numa linha da Minha Lista. */
+export interface ContinueEpisode {
+    episode_id: number;
+    number: number | null;
+    season_number: number | null;
+}
+
+/** Item das telas Minha Lista (Fila/Histórico/Favoritos), estilo CR. */
+export interface MyListItem extends AnimeCard {
+    languages: string[];
+    is_favorite: boolean;
+    in_watchlist: boolean;
+    continue: ContinueEpisode | null;
+}
+
+export type MyListSort = 'activity' | 'updated' | 'watched' | 'added' | 'alpha';
+
+export interface MyListFilters {
+    favoritesOnly?: boolean;
+    type?: 'series' | 'movie' | null;
+    language?: 'legendado' | 'dublado' | null;
+}
+
 export interface Episode {
     id: number;
     number: number | null;
@@ -38,7 +61,19 @@ export interface Season {
     number: number | null;
     title: string | null;
     image_url: string | null;
+    /** Total de episódios publicados (o detalhe não traz mais a lista completa). */
+    episode_count?: number;
+    /** Só presente em respostas antigas; hoje os episódios vêm paginados. */
+    episodes?: Episode[];
+}
+
+/** Página de episódios (scroll infinito). */
+export interface EpisodesPage {
     episodes: Episode[];
+    page: number;
+    lastPage: number;
+    total: number;
+    seasonNumber: number | null;
 }
 
 export interface AnimeDetail {
@@ -52,6 +87,9 @@ export interface AnimeDetail {
     rating: number | null;
     year: number | null;
     format: string | null;
+    comments_count: number;
+    in_watchlist: boolean;
+    is_favorite: boolean;
     genres: Genre[];
     seasons: Season[];
 }

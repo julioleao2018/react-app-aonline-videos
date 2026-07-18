@@ -1,4 +1,4 @@
-import { AnimeCard, AnimeDetail, CommentItem, CommentsResult, EpisodePlay, HomeRails, LikeState } from '../../domain/models/Anime';
+import { AnimeCard, AnimeDetail, CommentItem, CommentsResult, Episode, EpisodePlay, EpisodesPage, HomeRails, LikeState, MyListFilters, MyListItem, MyListSort } from '../../domain/models/Anime';
 import { IAnimeRepository } from '../../domain/repositories/IAnimeRepository';
 import { apiClient } from '../api/apiClient';
 import { fixMediaUrl } from '../api/media';
@@ -21,9 +21,15 @@ function fixDetail(detail: AnimeDetail): AnimeDetail {
         seasons: (detail.seasons ?? []).map((season) => ({
             ...season,
             image_url: fixMediaUrl(season.image_url),
-            episodes: (season.episodes ?? []).map((ep) => ({ ...ep, thumb_url: fixMediaUrl(ep.thumb_url) })),
         })),
     };
+}
+
+/** Envelope de coleção paginada do Laravel: { data, meta }. */
+interface PaginatedEnvelope<T> {
+    data: T[];
+    meta: { current_page: number; last_page: number; total: number };
+    season_number?: number | null;
 }
 
 export class AnimeRepository implements IAnimeRepository {
@@ -72,6 +78,82 @@ export class AnimeRepository implements IAnimeRepository {
     async getEpisodePlay(episodeId: number | string): Promise<EpisodePlay> {
         const { data } = await apiClient.get<Envelope<EpisodePlay>>(`/episodes/${episodeId}/play`);
         return data.data;
+    }
+
+    /** Monta os query params de sort/filtro compartilhados pelas telas da Minha Lista. */
+    private myListParams(sort?: MyListSort, filters?: MyListFilters): Record<string, string> {
+        const params: Record<string, string> = {};
+        if (sort) params.sort = sort;
+        if (filters?.favoritesOnly) params.favorites_only = '1';
+        if (filters?.type) params.type = filters.type;
+        if (filters?.language) params.language = filters.language;
+        return params;
+    }
+
+    private fixListItem(item: MyListItem): MyListItem {
+        return { ...item, cover_url: fixMediaUrl(item.cover_url), banner_url: fixMediaUrl(item.banner_url) };
+    }
+
+    /** Fila (watchlist) do usuário. */
+    async getWatchlist(sort?: MyListSort, filters?: MyListFilters): Promise<MyListItem[]> {
+        const { data } = await apiClient.get<Envelope<MyListItem[]>>('/me/watchlist', {
+            params: this.myListParams(sort, filters),
+        });
+        return (data.data ?? []).map((i) => this.fixListItem(i));
+    }
+
+    /** Favoritos do usuário. */
+    async getFavorites(sort?: MyListSort, filters?: MyListFilters): Promise<MyListItem[]> {
+        const { data } = await apiClient.get<Envelope<MyListItem[]>>('/me/favorites', {
+            params: this.myListParams(sort, filters),
+        });
+        return (data.data ?? []).map((i) => this.fixListItem(i));
+    }
+
+    /** Histórico (assistidos recentemente). */
+    async getHistory(sort?: MyListSort, filters?: MyListFilters): Promise<MyListItem[]> {
+        const { data } = await apiClient.get<Envelope<MyListItem[]>>('/me/history', {
+            params: this.myListParams(sort, filters),
+        });
+        return (data.data ?? []).map((i) => this.fixListItem(i));
+    }
+
+    /** Adiciona/remove o anime da watchlist; devolve o estado final. */
+    async toggleWatchlist(slug: string): Promise<boolean> {
+        const { data } = await apiClient.post<Envelope<{ in_watchlist: boolean }>>(
+            `/animes/${encodeURIComponent(slug)}/watchlist`
+        );
+        return !!data.data?.in_watchlist;
+    }
+
+    /** Adiciona/remove o anime dos favoritos; devolve o estado final. */
+    async toggleFavorite(slug: string): Promise<boolean> {
+        const { data } = await apiClient.post<Envelope<{ is_favorite: boolean }>>(
+            `/animes/${encodeURIComponent(slug)}/favorite`
+        );
+        return !!data.data?.is_favorite;
+    }
+
+    /** Página de episódios de uma temporada (scroll infinito). */
+    async getAnimeEpisodes(
+        slug: string,
+        options: { season?: number | null; page?: number; perPage?: number } = {}
+    ): Promise<EpisodesPage> {
+        const params: Record<string, number> = { page: options.page ?? 1, per_page: options.perPage ?? 20 };
+        if (options.season != null) params.season = options.season;
+
+        const { data } = await apiClient.get<PaginatedEnvelope<Episode>>(
+            `/animes/${encodeURIComponent(slug)}/episodes`,
+            { params }
+        );
+
+        return {
+            episodes: (data.data ?? []).map((ep) => ({ ...ep, thumb_url: fixMediaUrl(ep.thumb_url) })),
+            page: data.meta?.current_page ?? 1,
+            lastPage: data.meta?.last_page ?? 1,
+            total: data.meta?.total ?? 0,
+            seasonNumber: data.season_number ?? options.season ?? null,
+        };
     }
 
     async getComments(slug: string): Promise<CommentsResult> {
